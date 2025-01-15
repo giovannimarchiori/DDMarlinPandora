@@ -30,6 +30,9 @@ typedef std::vector<EVENT::CalorimeterHit *> CalorimeterHitVector;
 class DDCaloHitCreator
 {
 public:
+    // give access to the private memebers from DDCaloHitCreatorALLEGRO
+    friend class DDCaloHitCreatorALLEGRO;
+
     typedef std::vector<std::string> StringVector;
     typedef std::vector<float> FloatVector;
 
@@ -110,6 +113,10 @@ public:
         float                         m_hCalBarrelOuterR;                 ///< HCal barrel outer r coordinate
         float                         m_hCalBarrelOuterPhi0;              ///< HCal barrel outer phi0 coordinate
         unsigned int                  m_hCalBarrelOuterSymmetry;          ///< HCal barrel outer symmetry order
+
+        bool                          m_useSystemId;                      ///< flag whether to use systemId or not to identify origin of the CaloHit
+        int                           m_ecalBarrelSystemId;               ///< systemId of ECal Barrel
+        int                           m_hcalBarrelSystemId;               ///< systemId of HCal Barrel
 
     public:
       FloatVector m_eCalBarrelNormalVector;
