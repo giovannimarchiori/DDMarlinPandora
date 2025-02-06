@@ -928,6 +928,7 @@ void DDPandoraPFANewProcessor::FinaliseSteeringParameters()
     const dd4hep::rec::LayeredCalorimeterData * muonBarrelExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::MUON | dd4hep::DetType::BARREL),
 										     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
     //fg: muon endcap is not used :
+    // GM: WHY? Probably enable for ALLEGRO
     // //Get Muon Endcap extension by type, ignore plugs and rings 
     // const dd4hep::rec::LayeredCalorimeterData * muonEndcapExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::MUON | dd4hep::DetType::ENDCAP), ( dd4hep::DetType::AUXILIARY ) );
     
@@ -943,6 +944,7 @@ void DDPandoraPFANewProcessor::FinaliseSteeringParameters()
        m_caloHitCreatorSettings.m_ecalBarrelSystemId = 4;
        m_caloHitCreatorSettings.m_hcalBarrelSystemId = 8;
        m_caloHitCreatorSettings.m_coilOuterR = 0;
+       m_caloHitCreatorSettings.m_detectorName = m_settings.m_detectorName;
     }
 
     m_trackCreatorSettings.m_eCalBarrelInnerSymmetry        =   eCalBarrelExtension->inner_symmetry;
