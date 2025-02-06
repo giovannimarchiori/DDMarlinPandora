@@ -869,12 +869,12 @@ DDCaloHitCreator::Settings::Settings()
     m_hCalBarrelOuterR(0.f),
     m_hCalBarrelOuterPhi0(0.f),
     m_hCalBarrelOuterSymmetry(0.f),
+    m_detectorName(""),
     m_useSystemId(false),
     m_ecalBarrelSystemId(-1),
     m_hcalBarrelSystemId(-1),
     m_eCalBarrelNormalVector({0.0, 0.0, 1.0}),
     m_hCalBarrelNormalVector({0.0, 0.0, 1.0}),
-    m_muonBarrelNormalVector({0.0, 0.0, 1.0}),
-    m_detectorName("")
+    m_muonBarrelNormalVector({0.0, 0.0, 1.0})
 {
 }
