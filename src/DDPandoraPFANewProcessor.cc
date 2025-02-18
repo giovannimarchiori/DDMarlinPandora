@@ -186,14 +186,7 @@ void DDPandoraPFANewProcessor::init()
         m_pDDPfoCreator = new DDPfoCreator(m_pfoCreatorSettings, m_pPandora);
 
         PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, this->RegisterUserComponents());
-        if(m_settings.m_detectorName == "ALLEGRO")
-        {
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, static_cast<DDGeometryCreatorALLEGRO*>(m_pGeometryCreator)->CreateGeometry());
-        }
-        else
-        {
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pGeometryCreator->CreateGeometry());
-        }
+        PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pGeometryCreator->CreateGeometry());
         PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, PandoraApi::ReadSettings(*m_pPandora, m_settings.m_pandoraSettingsXmlFile));
     }
     catch (pandora::StatusCodeException &statusCodeException)
@@ -229,18 +222,10 @@ void DDPandoraPFANewProcessor::processEvent(LCEvent *pLCEvent)
         (void) m_pandoraToLCEventMap.insert(PandoraToLCEventMap::value_type(m_pPandora, pLCEvent));
 
         PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pDDMCParticleCreator->CreateMCParticles(pLCEvent));
-        if(m_settings.m_detectorName == "ALLEGRO")
-        {
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, static_cast<DDTrackCreatorALLEGRO*>(m_pTrackCreator)->CreateTracks(pLCEvent));
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, static_cast<DDCaloHitCreatorALLEGRO*>(m_pCaloHitCreator)->CreateCaloHits(pLCEvent));
-        }
-        else
-        {
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pTrackCreator->CreateTrackAssociations(pLCEvent));
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pTrackCreator->CreateTracks(pLCEvent));
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pDDMCParticleCreator->CreateTrackToMCParticleRelationships(pLCEvent, m_pTrackCreator->GetTrackVector()));
-          PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pCaloHitCreator->CreateCaloHits(pLCEvent));
-        }
+        PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pTrackCreator->CreateTrackAssociations(pLCEvent));
+        PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pTrackCreator->CreateTracks(pLCEvent));
+        PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pDDMCParticleCreator->CreateTrackToMCParticleRelationships(pLCEvent, m_pTrackCreator->GetTrackVector()));
+        PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pCaloHitCreator->CreateCaloHits(pLCEvent));
         PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, m_pDDMCParticleCreator->CreateCaloHitToMCParticleRelationships(pLCEvent, m_pCaloHitCreator->GetCalorimeterHitVector()));
 
         PANDORA_THROW_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, PandoraApi::ProcessEvent(*m_pPandora));
@@ -319,7 +304,7 @@ const EVENT::LCEvent *DDPandoraPFANewProcessor::GetCurrentEvent(const pandora::P
 pandora::StatusCode DDPandoraPFANewProcessor::RegisterUserComponents() const
 {
     PANDORA_RETURN_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, LCContent::RegisterAlgorithms(*m_pPandora));
-    PANDORA_RETURN_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, LCContent::RegisterBasicPlugins(*m_pPandora));
+    PANDORA_RETURN_RESULT_IF(pandora::STATUS_CODE_SUCCESS, !=, LCContent::RegisterBasicPlugins(*m_pPandora, m_settings.m_detectorName));
 
     if(m_settings.m_useDD4hepField)
     {
@@ -914,19 +899,19 @@ void DDPandoraPFANewProcessor::FinaliseSteeringParameters()
     
     //Get ECal Barrel extension by type, ignore plugs and rings 
     const dd4hep::rec::LayeredCalorimeterData * eCalBarrelExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::BARREL),
-										     ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) );
+                                                                                     ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) );
     //Get ECal Endcap extension by type, ignore plugs and rings 
     const dd4hep::rec::LayeredCalorimeterData * eCalEndcapExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::ENDCAP),
-										     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD  ) );
+                                                                                     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD  ) );
     //Get HCal Barrel extension by type, ignore plugs and rings 
     const dd4hep::rec::LayeredCalorimeterData * hCalBarrelExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::BARREL),
-										     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
+                                                                                     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
       //Get HCal Endcap extension by type, ignore plugs and rings 
     const dd4hep::rec::LayeredCalorimeterData * hCalEndcapExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::ENDCAP),
-										     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
+                                                                                     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
     //Get Muon Barrel extension by type, ignore plugs and rings 
     const dd4hep::rec::LayeredCalorimeterData * muonBarrelExtension= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::MUON | dd4hep::DetType::BARREL),
-										     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
+                                                                                     ( dd4hep::DetType::AUXILIARY |  dd4hep::DetType::FORWARD ) );
     //fg: muon endcap is not used :
     // GM: WHY? Probably enable for ALLEGRO
     // //Get Muon Endcap extension by type, ignore plugs and rings 

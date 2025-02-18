@@ -51,7 +51,7 @@ public:
     /**
      *  @brief  Destructor
      */
-     virtual ~DDGeometryCreator();
+    virtual ~DDGeometryCreator();
 
     /**
      *  @brief  Create geometry
