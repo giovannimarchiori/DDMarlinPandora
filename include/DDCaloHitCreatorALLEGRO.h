@@ -60,5 +60,6 @@ private:
      *  @param  caloHitParameters the calo hit parameters to populate
      */
     void GetCommonCaloHitProperties(const EVENT::CalorimeterHit *const pCaloHit, PandoraApi::CaloHit::Parameters &caloHitParameters) const;
+
 };
 #endif // #ifndef CALO_HIT_CREATOR_H

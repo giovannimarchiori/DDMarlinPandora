@@ -135,7 +135,7 @@ public:
     /**
      *  @brief  Destructor
      */
-     virtual ~DDCaloHitCreator();
+    virtual ~DDCaloHitCreator();
 
     /**
      *  @brief  Create calo hits

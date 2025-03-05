@@ -184,10 +184,10 @@ void DDPfoCreator::SetClusterSubDetectorEnergies(const pandora::StringVector &su
             case CHT::lhcal: subDetectorEnergies[LHCAL_INDEX] += caloHitEnergy; break;
             case CHT::bcal:  subDetectorEnergies[BCAL_INDEX ] += caloHitEnergy; break;
             default: streamlog_out(WARNING) << "DDPfoCreator::SetClusterSubDetectorEnergies: no subdetector found for hit with type: " << pCalorimeterHit->getType() << std::endl;
-              streamlog_out(WARNING) << "Hit position: "
-                                     << pCalorimeterHit->getPosition()[0] << " "
-                                     << pCalorimeterHit->getPosition()[1] << " "
-                                     << pCalorimeterHit->getPosition()[2] << std::endl;
+                streamlog_out(WARNING) << "Hit position: "
+                                       << pCalorimeterHit->getPosition()[0] << " "
+                                       << pCalorimeterHit->getPosition()[1] << " "
+                                       << pCalorimeterHit->getPosition()[2] << std::endl;
         }
     }
 }
