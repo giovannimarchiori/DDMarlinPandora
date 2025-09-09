@@ -39,10 +39,8 @@ DDCaloHitCreator::DDCaloHitCreator(const Settings &settings, const pandora::Pand
     m_calorimeterHitVector(0),
     m_volumeManager()
 {
-
-    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& barrelLayers= getExtension(( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::BARREL), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ))->layers;
-
-    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& endcapLayers= getExtension(( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::ENDCAP), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ))->layers;
+    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& barrelLayers = getExtension(( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::BARREL), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ))->layers;
+    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& endcapLayers = getExtension(( dd4hep::DetType::CALORIMETER | dd4hep::DetType::HADRONIC | dd4hep::DetType::ENDCAP), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ))->layers;
 
     ///Take thicknesses from last layer (was like that before with gear)
     // GM: NOTE THAT IN ALLEGRO THE THICKNESS IS NOT THE SAME FOR ALL LAYERS...
@@ -55,8 +53,8 @@ DDCaloHitCreator::DDCaloHitCreator(const Settings &settings, const pandora::Pand
    dd4hep::Detector& theDetector = dd4hep::Detector::getInstance();
    m_volumeManager = theDetector.volumeManager();
    if( not m_volumeManager.isValid() ){
-     theDetector.apply("DD4hepVolumeManager",0,0);
-     m_volumeManager = theDetector.volumeManager();
+       theDetector.apply("DD4hepVolumeManager",0,0);
+       m_volumeManager = theDetector.volumeManager();
    }
 
 }
@@ -85,11 +83,18 @@ pandora::StatusCode DDCaloHitCreator::CreateCaloHits(const EVENT::LCEvent *const
 pandora::StatusCode DDCaloHitCreator::CreateECalCaloHits(const EVENT::LCEvent *const pLCEvent)
 {
     streamlog_out( MESSAGE ) << "CreateECalCaloHits" << std::endl;
+
+    // retrieve layer information for ECAL barrel and endcap
+    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& barrelLayers = getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::BARREL), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) )->layers;
+    const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& endcapLayers = getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::ENDCAP), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) )->layers;
+
+    // loop over list of ECAL calo hit collections
     for (StringVector::const_iterator iter = m_settings.m_eCalCaloHitCollections.begin(), iterEnd = m_settings.m_eCalCaloHitCollections.end();
         iter != iterEnd; ++iter)
     {
         try
         {
+            // retrieve collection and number of hits in collection
             const EVENT::LCCollection *pCaloHitCollection = pLCEvent->getCollection(*iter);
             const int nElements(pCaloHitCollection->getNumberOfElements());
 
@@ -101,13 +106,12 @@ pandora::StatusCode DDCaloHitCreator::CreateECalCaloHits(const EVENT::LCEvent *c
                 continue;
             }
 
-            const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& barrelLayers= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::BARREL), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) )->layers;
-            const std::vector<dd4hep::rec::LayeredCalorimeterStruct::Layer>& endcapLayers= getExtension( ( dd4hep::DetType::CALORIMETER | dd4hep::DetType::ELECTROMAGNETIC | dd4hep::DetType::ENDCAP), ( dd4hep::DetType::AUXILIARY  |  dd4hep::DetType::FORWARD ) )->layers;
-
+            // create bitfield decoder to extract layer from cellID
             UTIL::CellIDDecoder<CalorimeterHit> cellIdDecoder(pCaloHitCollection);
             const std::string layerCodingString(pCaloHitCollection->getParameters().getStringVal(LCIO::CellIDEncoding));
             std::string layerCoding("layer");
 
+            // loop over hits in collection
             for (int i = 0; i < nElements; ++i)
             {
                 try
@@ -117,10 +121,11 @@ pandora::StatusCode DDCaloHitCreator::CreateECalCaloHits(const EVENT::LCEvent *c
                     if (NULL == pCaloHit)
                         throw EVENT::Exception("Collection type mismatch");
 
+                    // retrieve calibrations and MIP threshold for ECAL
+                    // - default
                     float eCalToMip(m_settings.m_eCalToMip), eCalMipThreshold(m_settings.m_eCalMipThreshold), eCalToEMGeV(m_settings.m_eCalToEMGeV),
                         eCalToHadGeVBarrel(m_settings.m_eCalToHadGeVBarrel), eCalToHadGeVEndCap(m_settings.m_eCalToHadGeVEndCap);
-
-                    // Hybrid ECAL including pure ScECAL.
+                    // - override for Hybrid ECAL including pure ScECAL.
                     if (m_settings.m_useEcalScLayers)
                     {
                         std::string collectionName(*iter);
@@ -148,39 +153,47 @@ pandora::StatusCode DDCaloHitCreator::CreateECalCaloHits(const EVENT::LCEvent *c
                         }
                     }
 
+                    // create caloHitParameters object to hold hit properties necessary for creating a Pandora CaloHit
                     PandoraApi::CaloHit::Parameters caloHitParameters;
                     caloHitParameters.m_hitType = pandora::ECAL;
                     caloHitParameters.m_isDigital = false;
                     caloHitParameters.m_layer = cellIdDecoder(pCaloHit)[layerCoding.c_str()];
                     caloHitParameters.m_isInOuterSamplingLayer = false;
+                    // retrieve hit geometry, position, expected direction, energy, time
                     this->GetCommonCaloHitProperties(pCaloHit, caloHitParameters);
 
+                    // retrieve properties that depend on hit being in barrel or endcap as well as absorber correction
+                    // set m_hadronicEnergy, m_electromagneticEnergy, m_mipEquivalentEnergy
                     float absorberCorrection(1.);
-
                     if ( (!m_settings.m_useSystemId && std::fabs(pCaloHit->getPosition()[2]) < m_settings.m_eCalBarrelOuterZ) ||
                          (m_settings.m_useSystemId && cellIdDecoder(pCaloHit)["system"] == m_settings.m_ecalBarrelSystemId) )
                     {
-                      // streamlog_out( DEBUG6 )
-                      streamlog_out( MESSAGE )
-                                              << "IDS " << *iter
-                                              << std::setw(15) << pCaloHit->getCellID0()
-                                              << std::setw(15) << pCaloHit->getPosition()[0]
-                                              << std::setw(15) << pCaloHit->getPosition()[1]
-                                              << std::setw(15) << pCaloHit->getPosition()[2]
-                                              << std::setw(5) << cellIdDecoder(pCaloHit)["system"]
-                                              << std::setw(5) << cellIdDecoder(pCaloHit)["module"]
-                                              << std::setw(5) << cellIdDecoder(pCaloHit)["layer"]
-                                              << std::setw(5) << cellIdDecoder(pCaloHit)["theta"];
-                      if (m_settings.m_detectorName != "ALLEGRO") {
-                        streamlog_out( DEBUG6 ) << std::setw(5) << cellIdDecoder(pCaloHit)["stave"]
-                                                << std::setw(5) << cellIdDecoder(pCaloHit)["x"]
-                                                << std::setw(5) << cellIdDecoder(pCaloHit)["y"];
-                      }
-                      // streamlog_out( DEBUG6 ) << std::endl;
-                      streamlog_out( MESSAGE ) << std::endl;
+                        // streamlog_out( DEBUG6 )
+                        streamlog_out( MESSAGE )
+                                                << "IDS " << *iter
+                                                << std::setw(15) << pCaloHit->getCellID0()
+                                                << std::setw(15) << pCaloHit->getPosition()[0]
+                                                << std::setw(15) << pCaloHit->getPosition()[1]
+                                                << std::setw(15) << pCaloHit->getPosition()[2]
+                                                << std::setw(5) << cellIdDecoder(pCaloHit)["system"]
+                                                << std::setw(5) << cellIdDecoder(pCaloHit)["module"]
+                                                << std::setw(5) << cellIdDecoder(pCaloHit)["layer"];
+                        if (m_settings.m_detectorName != "ALLEGRO") {
+                            streamlog_out( DEBUG6 ) << std::setw(5) << cellIdDecoder(pCaloHit)["stave"]
+                                                    << std::setw(5) << cellIdDecoder(pCaloHit)["x"]
+                                                    << std::setw(5) << cellIdDecoder(pCaloHit)["y"];
+                        }
+                        else {
+                            // streamlog_out( DEBUG6 )
+                            streamlog_out( MESSAGE )
+                                << std::setw(5) << cellIdDecoder(pCaloHit)["theta"];
+                        }                    
 
-                      this->GetBarrelCaloHitProperties(pCaloHit, barrelLayers, m_settings.m_eCalBarrelInnerSymmetry, caloHitParameters, m_settings.m_eCalBarrelNormalVector, absorberCorrection);
+                        // streamlog_out( DEBUG6 ) << std::endl;
+                        streamlog_out( MESSAGE ) << std::endl;
 
+                        this->GetBarrelCaloHitProperties(pCaloHit, barrelLayers, m_settings.m_eCalBarrelInnerSymmetry,
+                                                         caloHitParameters, m_settings.m_eCalBarrelNormalVector, absorberCorrection);
                         caloHitParameters.m_hadronicEnergy = eCalToHadGeVBarrel * pCaloHit->getEnergy();
                     }
                     else
@@ -188,10 +201,15 @@ pandora::StatusCode DDCaloHitCreator::CreateECalCaloHits(const EVENT::LCEvent *c
                         this->GetEndCapCaloHitProperties(pCaloHit, endcapLayers, caloHitParameters, absorberCorrection);
                         caloHitParameters.m_hadronicEnergy = eCalToHadGeVEndCap * pCaloHit->getEnergy();
                     }
-
+                    // GM DEBUG
+                    streamlog_out( MESSAGE ) << "layer: " << cellIdDecoder(pCaloHit)["layer"] << " , absorberCorrection: " << absorberCorrection << std::endl;
+                    // GM CHECK: would probably make more sense to do a sensitiveThicknessCorrection?
+                    // i.e. divide hit energy by sensitive thickness
+                    // mipEquivalentEnergy = (hit energy) * (eCal To MIP of 1st layer) * sensitive_thickness(1st layer)/sensitive_thickness(this layer)
+                    // also: how is this used in Pandora?
                     caloHitParameters.m_mipEquivalentEnergy = pCaloHit->getEnergy() * eCalToMip * absorberCorrection;
 
-                    // GM: check if this is removing hits..
+                    // GM CHECK: is this removing hits?
                     if (caloHitParameters.m_mipEquivalentEnergy.Get() < eCalMipThreshold) {
                         streamlog_out( MESSAGE ) << "MIP equivalent energy below threshold, skipping .." << std::endl;
                         continue;
@@ -591,16 +609,34 @@ void DDCaloHitCreator::GetEndCapCaloHitProperties(const EVENT::CalorimeterHit *c
 {
     caloHitParameters.m_hitRegion = pandora::ENDCAP;
 
-    //FIXME! WHAT DO WE DO HERE?
+    // retrieve layer
     const int physicalLayer(std::min(static_cast<int>(caloHitParameters.m_layer.Get()), static_cast<int>(layers.size()-1)));
-    caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0/dd4hep::mm;
-    caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1/dd4hep::mm;
+    streamlog_out( DEBUG ) << "Hit layer: " << caloHitParameters.m_layer.Get() << std::endl;
+    streamlog_out( DEBUG ) << "Hit type: " << caloHitParameters.m_hitType.Get() << std::endl;
+    streamlog_out( DEBUG ) << "physicalLayer: " << physicalLayer << std::endl;
 
+    // set cell sizes (divide by mm for rectangular geometry, for which sizes are dimensionful, but not for pointing geometries,
+    // for which sizes are dimensionless (radians)
+    if (caloHitParameters.m_cellGeometry.Get() == pandora::RECTANGULAR) {
+        streamlog_out( DEBUG ) << "cell geometry: RECTANGULAR" << std::endl;
+        caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0/dd4hep::mm;
+        caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1/dd4hep::mm;
+        streamlog_out( DEBUG ) << "cell size: " << caloHitParameters.m_cellSize0.Get() << " x " << caloHitParameters.m_cellSize1.Get() << std::endl;
+    }
+    else if (caloHitParameters.m_cellGeometry.Get() == pandora::POINTING ||
+             caloHitParameters.m_cellGeometry.Get() == pandora::POINTING_THETAPHI) {
+        streamlog_out( DEBUG ) << "cell geometry: POINTING*" << std::endl;
+        caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0;
+        caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1;
+        streamlog_out( DEBUG ) << "cell size: " << caloHitParameters.m_cellSize0.Get() << " x " << caloHitParameters.m_cellSize1.Get() << std::endl;
+    }
+
+    // calculate detector thickness X, X/X0, X/lambda_I, and absorber thickness between previous layer and this one
+    // first, consider the inner half of the current layer
     double thickness = (layers[physicalLayer].inner_thickness+layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
     double nRadLengths = layers[physicalLayer].inner_nRadiationLengths;
     double nIntLengths = layers[physicalLayer].inner_nInteractionLengths;
     double layerAbsorberThickness = (layers[physicalLayer].inner_thickness-layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
-
     if(physicalLayer>0){
         thickness += (layers[physicalLayer-1].outer_thickness -layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
         nRadLengths += layers[physicalLayer-1].outer_nRadiationLengths;
@@ -608,12 +644,11 @@ void DDCaloHitCreator::GetEndCapCaloHitProperties(const EVENT::CalorimeterHit *c
         layerAbsorberThickness += (layers[physicalLayer-1].outer_thickness -layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
 
     }
-
     caloHitParameters.m_cellThickness = thickness;
     caloHitParameters.m_nCellRadiationLengths = nRadLengths;
     caloHitParameters.m_nCellInteractionLengths = nIntLengths;
-
-    if (caloHitParameters.m_nCellRadiationLengths.Get() < std::numeric_limits<float>::epsilon() || caloHitParameters.m_nCellInteractionLengths.Get() < std::numeric_limits<float>::epsilon())
+    if (caloHitParameters.m_nCellRadiationLengths.Get() < std::numeric_limits<float>::epsilon() ||
+        caloHitParameters.m_nCellInteractionLengths.Get() < std::numeric_limits<float>::epsilon())
     {
         streamlog_out(WARNING) << "CaloHitCreator::GetEndCapCaloHitProperties Calo hit has 0 radiation length or interaction length: \
             not creating a Pandora calo hit." << std::endl;
@@ -657,41 +692,56 @@ void DDCaloHitCreator::GetBarrelCaloHitProperties( const EVENT::CalorimeterHit *
 {
     caloHitParameters.m_hitRegion = pandora::BARREL;
 
-    // GM for debug
-    // streamlog_out(DEBUG) << "In GetBarrelCaloHitProperties" << std::endl;
-    // streamlog_out(DEBUG) << "Nlayers: " << layers.size() << std::endl;
-    // streamlog_out(DEBUG) << "Hit layer: " << caloHitParameters.m_layer.Get() << std::endl;
-    // streamlog_out(DEBUG) << "Hit type: " << caloHitParameters.m_hitType.Get() << std::endl;
-
-    // GM check if we need to handle the case of projective cells rather than fixed size..
+    // retrieve layer
     const int physicalLayer(std::min(static_cast<int>(caloHitParameters.m_layer.Get()), static_cast<int>(layers.size()-1)));
-    caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0/dd4hep::mm;
-    caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1/dd4hep::mm;
+    streamlog_out( DEBUG ) << "Hit layer: " << caloHitParameters.m_layer.Get() << std::endl;
+    streamlog_out( DEBUG ) << "Hit type: " << caloHitParameters.m_hitType.Get() << std::endl;
+    streamlog_out( DEBUG ) << "physicalLayer: " << physicalLayer << std::endl;
 
-    double thickness = (layers[physicalLayer].inner_thickness+layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
-    double nRadLengths = layers[physicalLayer].inner_nRadiationLengths;
-    double nIntLengths = layers[physicalLayer].inner_nInteractionLengths;
-
-    double layerAbsorberThickness = (layers[physicalLayer].inner_thickness-layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
-    if(physicalLayer>0){
-        thickness += (layers[physicalLayer-1].outer_thickness -layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
-        nRadLengths += layers[physicalLayer-1].outer_nRadiationLengths;
-        nIntLengths += layers[physicalLayer-1].outer_nInteractionLengths;
-        layerAbsorberThickness += (layers[physicalLayer-1].outer_thickness -layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
+    // set cell sizes (divide by mm for rectangular geometry, for which sizes are dimensionful, but not for pointing geometries,
+    // for which sizes are dimensionless (radians)
+    if (caloHitParameters.m_cellGeometry.Get() == pandora::RECTANGULAR) {
+        streamlog_out( DEBUG ) << "cell geometry: RECTANGULAR" << std::endl;
+        caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0/dd4hep::mm;
+        caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1/dd4hep::mm;
+        streamlog_out( DEBUG ) << "cell size: " << caloHitParameters.m_cellSize0.Get() << " x " << caloHitParameters.m_cellSize1.Get() << std::endl;
+    }
+    else if (caloHitParameters.m_cellGeometry.Get() == pandora::POINTING ||
+             caloHitParameters.m_cellGeometry.Get() == pandora::POINTING_THETAPHI) {
+        streamlog_out( MESSAGE ) << "cell geometry: POINTING*" << std::endl;
+        caloHitParameters.m_cellSize0 = layers[physicalLayer].cellSize0;
+        caloHitParameters.m_cellSize1 = layers[physicalLayer].cellSize1;
+        streamlog_out( MESSAGE ) << "cell size: " << caloHitParameters.m_cellSize0.Get() << " x " << caloHitParameters.m_cellSize1.Get() << std::endl;
     }
 
+    // calculate detector thickness X, X/X0, X/lambda_I, and absorber thickness between previous layer and this one
+    // first, consider the inner half of the current layer
+    double thickness = (layers[physicalLayer].inner_thickness + layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
+    double nRadLengths = layers[physicalLayer].inner_nRadiationLengths;
+    double nIntLengths = layers[physicalLayer].inner_nInteractionLengths;
+    double layerAbsorberThickness = (layers[physicalLayer].inner_thickness - layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
+    // if this is not the first layer, add up the outer half of the previous layer
+    if(physicalLayer>0){
+        thickness += (layers[physicalLayer-1].outer_thickness - layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
+        nRadLengths += layers[physicalLayer-1].outer_nRadiationLengths;
+        nIntLengths += layers[physicalLayer-1].outer_nInteractionLengths;
+        layerAbsorberThickness += (layers[physicalLayer-1].outer_thickness - layers[physicalLayer].sensitive_thickness/2.0)/dd4hep::mm;
+    }
     caloHitParameters.m_cellThickness = thickness;
     caloHitParameters.m_nCellRadiationLengths = nRadLengths;
     caloHitParameters.m_nCellInteractionLengths = nIntLengths;
-
-    if (caloHitParameters.m_nCellRadiationLengths.Get() < std::numeric_limits<float>::epsilon() || caloHitParameters.m_nCellInteractionLengths.Get() < std::numeric_limits<float>::epsilon())
+    if (caloHitParameters.m_nCellRadiationLengths.Get() < std::numeric_limits<float>::epsilon() ||
+        caloHitParameters.m_nCellInteractionLengths.Get() < std::numeric_limits<float>::epsilon())
     {
         streamlog_out(WARNING) << "CaloHitCreator::GetBarrelCaloHitProperties Calo hit has 0 radiation length or interaction length: \
             not creating a Pandora calo hit." << std::endl;
         throw pandora::StatusCodeException(pandora::STATUS_CODE_INVALID_PARAMETER);
     }
 
-    //FIXME! do we need this?
+    
+    // FIXME! do we need this?
+    // this returns the ratio between the absorber thickness in the first layer where it is non-zero and
+    // the absorber thickness of this layer
     absorberCorrection = 1.;
     for (unsigned int i = 0, iMax = layers.size(); i < iMax; ++i)
     {
